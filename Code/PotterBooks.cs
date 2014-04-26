@@ -38,7 +38,12 @@ namespace Code
 
         private static double FindDlxSolutionWithLowestPrice(IList<Solution> solutions, IList<Tuple<int[], string, double>> dlxData)
         {
-            return !solutions.Any() ? 0 : solutions.Min(solution => solution.RowIndexes.Sum(rowIndex => dlxData[rowIndex].Item3));
+            return !solutions.Any() ? 0 : solutions.Min(solution => CalculatePriceOfSolution(solution, dlxData));
+        }
+
+        private static double CalculatePriceOfSolution(Solution solution, IList<Tuple<int[], string, double>> dlxData)
+        {
+            return solution.RowIndexes.Sum(rowIndex => dlxData[rowIndex].Item3);
         }
 
         private static List<Solution> SolveDlx(IList<Tuple<int[], string, double>> dlxData)
@@ -79,9 +84,9 @@ namespace Code
             var indices = setOfBooks.Select(x => x.Item2);
             foreach (var index in indices) columns[index] = 1;
             var books = setOfBooks.Select(x => x.Item1).ToArray();
-            var booksString = new string(books);
+            var booksAsAString = new string(books);
             var subTotal = CalculateSubTotalForSetOfBooks(books);
-            return Tuple.Create(columns, booksString, subTotal);
+            return Tuple.Create(columns, booksAsAString, subTotal);
         }
 
         private static IEnumerable<Tuple<char, int>> FindBiggestDistinctSetOfBooks(IList<Tuple<char, int>> booksAndIndices)
