@@ -48,6 +48,7 @@ namespace Code
 
         private static List<Solution> SolveDlx(IList<Tuple<int[], string, double>> dlxData)
         {
+            DumpDlxData(dlxData);
             var dlx = new Dlx();
             var solutions = dlx.Solve<
                 IList<Tuple<int[], string, double>>,
@@ -57,7 +58,19 @@ namespace Code
                     (d, f) => { foreach (var r in d) f(r); },
                     (r, f) => { foreach (var c in r.Item1) f(c); },
                     c => c != 0).ToList();
+            System.Diagnostics.Debug.WriteLine("Number of solutions: {0}", solutions.Count);
             return solutions;
+        }
+
+        private static void DumpDlxData(ICollection<Tuple<int[], string, double>> dlxData)
+        {
+            foreach (var dlxDataRow in dlxData)
+            {
+                var indices = "[" + string.Join(",", dlxDataRow.Item1.Select(x => Convert.ToString(x))) + "]";
+                System.Diagnostics.Debug.WriteLine("{0}, {1}, {2}", indices, dlxDataRow.Item2, dlxDataRow.Item3);
+            }
+
+            System.Diagnostics.Debug.WriteLine("Number of rows in dlxData: {0}", dlxData.Count);
         }
 
         private static List<Tuple<int[], string, double>> BuildDlxData(IList<Tuple<char, int>> booksAndIndices)
@@ -68,22 +81,42 @@ namespace Code
             return dlxData;
         }
 
-        private static void Iter(int numColumns, ICollection<Tuple<int[], string, double>> dlxData, IList<Tuple<char, int>> booksAndIndices)
+        private static void Iter(int numColumns, ICollection<Tuple<int[], string, double>> dlxData,
+                                 IList<Tuple<char, int>> booksAndIndices)
         {
             var combinations = GetNextSetOfBookCombinations(booksAndIndices).ToList();
 
             if (combinations.Any())
             {
+                // Optimisation - if we have any combinations consisting of 4 or more books
+                // then don't bother considering smaller combinations.
+                if (combinations.Any(x => x.Count() >= 4))
+                {
+                    combinations = combinations.Where(x => x.Count() >= 4).ToList();
+                }
+
                 foreach (var combination in combinations.Select(x => x.ToList()))
                 {
-                    dlxData.Add(MakeDlxDataRow(numColumns, combination));
+                    AddDlxDataRow(dlxData, MakeDlxDataRow(numColumns, combination));
                     var remainingBooksAndIndices = booksAndIndices.CopyExcept(combination);
                     Iter(numColumns, dlxData, remainingBooksAndIndices);
                 }
             }
             else
             {
-                dlxData.Add(MakeDlxDataRow(numColumns, booksAndIndices));
+                if (booksAndIndices.Any())
+                {
+                    AddDlxDataRow(dlxData, MakeDlxDataRow(numColumns, booksAndIndices));
+                }
+            }
+        }
+
+        private static void AddDlxDataRow(ICollection<Tuple<int[], string, double>> dlxData, Tuple<int[], string, double> dlxDataRow)
+        {
+            var existingRowWithSameIndices = dlxData.FirstOrDefault(x => x.Item1.SequenceEqual(dlxDataRow.Item1));
+            if (existingRowWithSameIndices == null)
+            {
+                dlxData.Add(dlxDataRow);
             }
         }
 

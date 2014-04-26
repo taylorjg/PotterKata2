@@ -67,8 +67,8 @@ namespace Tests
             AssertPrice(price, expectedPrice);
         }
 
-        //[TestCase("AABBCCDE", 2 * (4 * PotterBooks.UnitBookPrice * 0.80d))] // = ABCD + ABCE
-        //[TestCase("AAAAABBBBBCCCCDDDDDEEEE", (3 * (5 * PotterBooks.UnitBookPrice * 0.75d)) + (2 * (4 * PotterBooks.UnitBookPrice * 0.80d)))] // = ABCDE + ABCDE + ABCDE + ABCD + ABDE
+        [TestCase("AABBCCDE", 2 * (4 * PotterBooks.UnitBookPrice * 0.80d))] // = ABCD + ABCE
+        [TestCase("AAAAABBBBBCCCCDDDDDEEEE", (3 * (5 * PotterBooks.UnitBookPrice * 0.75d)) + (2 * (4 * PotterBooks.UnitBookPrice * 0.80d)))] // = ABCDE + ABCDE + ABCDE + ABCD + ABDE
         public void EdgeCaseIsPricedCorrectly(string books, double expectedPrice)
         {
             var price = PotterBooks.CalculatePriceFor(books);
