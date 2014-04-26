@@ -8,5 +8,17 @@ namespace Code
         {
             foreach (var item in collection) source.Remove(item);
         }
+
+        public static IList<TSource> Copy<TSource>(this IList<TSource> source)
+        {
+            return new List<TSource>(source);
+        }
+
+        public static IList<TSource> CopyExcept<TSource>(this IList<TSource> source, IEnumerable<TSource> collection)
+        {
+            var copyOfList = source.Copy();
+            copyOfList.RemoveRange(collection);
+            return copyOfList;
+        }
     }
 }

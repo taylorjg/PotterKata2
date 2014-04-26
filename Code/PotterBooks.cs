@@ -64,18 +64,41 @@ namespace Code
         {
             var numColumns = booksAndIndices.Count;
             var dlxData = new List<Tuple<int[], string, double>>();
-
-            for (;;)
-            {
-                var setOfBooks = FindBiggestDistinctSetOfBooks(booksAndIndices).ToList();
-                var numDistinctBooks = setOfBooks.Count();
-                if (numDistinctBooks == 0) break;
-                if (numDistinctBooks == 1) setOfBooks = booksAndIndices.Where(_ => true).ToList();
-                dlxData.Add(MakeDlxDataRow(numColumns, setOfBooks));
-                booksAndIndices.RemoveRange(setOfBooks);
-            }
-
+            Iter(numColumns, dlxData, booksAndIndices);
             return dlxData;
+        }
+
+        private static void Iter(int numColumns, ICollection<Tuple<int[], string, double>> dlxData, IList<Tuple<char, int>> booksAndIndices)
+        {
+            var combinations = GetNextSetOfBookCombinations(booksAndIndices).ToList();
+
+            if (combinations.Any())
+            {
+                foreach (var combination in combinations.Select(x => x.ToList()))
+                {
+                    dlxData.Add(MakeDlxDataRow(numColumns, combination));
+                    var remainingBooksAndIndices = booksAndIndices.CopyExcept(combination);
+                    Iter(numColumns, dlxData, remainingBooksAndIndices);
+                }
+            }
+            else
+            {
+                dlxData.Add(MakeDlxDataRow(numColumns, booksAndIndices));
+            }
+        }
+
+        private static IEnumerable<IEnumerable<Tuple<char, int>>> GetNextSetOfBookCombinations(IList<Tuple<char, int>> booksAndIndices)
+        {
+            var remainingBooks = booksAndIndices.Select(x => x.Item1);
+            var seed = Enumerable.Empty<IEnumerable<char>>();
+
+            return Enumerable.Range(2, 5)
+                             .Aggregate(
+                                 seed,
+                                 (acc, i) => acc.Concat(
+                                     Enumerable.Repeat(remainingBooks, i)
+                                               .Combinations()))
+                             .Select(cs => cs.Select(c => booksAndIndices.First(x => x.Item1 == c)));
         }
 
         private static Tuple<int[], string, double> MakeDlxDataRow(int numColumns, IList<Tuple<char, int>> setOfBooks)
@@ -87,13 +110,6 @@ namespace Code
             var booksAsAString = new string(books);
             var subTotal = CalculateSubTotalForSetOfBooks(books);
             return Tuple.Create(columns, booksAsAString, subTotal);
-        }
-
-        private static IEnumerable<Tuple<char, int>> FindBiggestDistinctSetOfBooks(IList<Tuple<char, int>> booksAndIndices)
-        {
-            var remainingBooks = booksAndIndices.Select(x => x.Item1);
-            var distinctBooks = remainingBooks.Distinct();
-            return distinctBooks.Select(book => booksAndIndices.First(x => x.Item1 == book));
         }
 
         public static double CalculatePriceFor(string books)
