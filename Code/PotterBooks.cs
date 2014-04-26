@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using DlxLib;
 
@@ -29,70 +28,72 @@ namespace Code
             return subTotal;
         }
 
-        private static double FindLowsetPriceUsingDlx(IList<char> books)
+        private static double FindLowsetPriceUsingDlx(IEnumerable<char> books)
         {
-            if (!books.Any())
-            {
-                return 0;
-            }
+            var booksAndIndices = books.Select((book, index) => Tuple.Create(book, index)).ToList();
+            var dlxData = BuildDlxData(booksAndIndices);
+            var solutions = SolveDlx(dlxData);
+            return FindDlxSolutionWithLowestPrice(solutions, dlxData);
+        }
 
-            var booksAndIndices = books.Select((c, i) => Tuple.Create(c, i)).ToList();
-            var numColumns = books.Count;
-            var data = new List<Tuple<int[], string, double>>();
+        private static double FindDlxSolutionWithLowestPrice(IList<Solution> solutions, IList<Tuple<int[], string, double>> dlxData)
+        {
+            return !solutions.Any() ? 0 : solutions.Min(solution => solution.RowIndexes.Sum(rowIndex => dlxData[rowIndex].Item3));
+        }
 
-            for (;;)
-            {
-                var setOfBooks = FindBiggestDistinctSetOfBooks(books, booksAndIndices).ToList();
-
-                var numDistinctBooks = setOfBooks.Count();
-                if (numDistinctBooks == 0) break;
-                if (numDistinctBooks == 1) setOfBooks = booksAndIndices.Where(_ => true).ToList();
-
-                var dataRow = MakeDlxDataRow(numColumns, setOfBooks);
-                data.Add(dataRow);
-                foreach (var x in setOfBooks)
-                {
-                    books.Remove(x.Item1);
-                    booksAndIndices.Remove(x);
-                }
-            }
-
+        private static List<Solution> SolveDlx(IList<Tuple<int[], string, double>> dlxData)
+        {
             var dlx = new Dlx();
             var solutions = dlx.Solve<
                 IList<Tuple<int[], string, double>>,
                 Tuple<int[], string, double>,
                 int>(
-                    data,
+                    dlxData,
                     (d, f) => { foreach (var r in d) f(r); },
                     (r, f) => { foreach (var c in r.Item1) f(c); },
-                    c => c != 0);
+                    c => c != 0).ToList();
+            return solutions;
+        }
 
-            return solutions.Min(solution => solution.RowIndexes.Sum(rowIndex => data[rowIndex].Item3));
+        private static List<Tuple<int[], string, double>> BuildDlxData(IList<Tuple<char, int>> booksAndIndices)
+        {
+            var numColumns = booksAndIndices.Count;
+            var dlxData = new List<Tuple<int[], string, double>>();
+
+            for (;;)
+            {
+                var setOfBooks = FindBiggestDistinctSetOfBooks(booksAndIndices).ToList();
+                var numDistinctBooks = setOfBooks.Count();
+                if (numDistinctBooks == 0) break;
+                if (numDistinctBooks == 1) setOfBooks = booksAndIndices.Where(_ => true).ToList();
+                dlxData.Add(MakeDlxDataRow(numColumns, setOfBooks));
+                booksAndIndices.RemoveRange(setOfBooks);
+            }
+
+            return dlxData;
         }
 
         private static Tuple<int[], string, double> MakeDlxDataRow(int numColumns, IList<Tuple<char, int>> setOfBooks)
         {
             var columns = new int[numColumns];
             var indices = setOfBooks.Select(x => x.Item2);
-            foreach (var index in indices)
-            {
-                columns[index] = 1;
-            }
+            foreach (var index in indices) columns[index] = 1;
             var books = setOfBooks.Select(x => x.Item1).ToArray();
             var booksString = new string(books);
             var subTotal = CalculateSubTotalForSetOfBooks(books);
             return Tuple.Create(columns, booksString, subTotal);
         }
 
-        private static IEnumerable<Tuple<char, int>> FindBiggestDistinctSetOfBooks(IEnumerable<char> books, IEnumerable<Tuple<char, int>> booksAndIndices)
+        private static IEnumerable<Tuple<char, int>> FindBiggestDistinctSetOfBooks(IList<Tuple<char, int>> booksAndIndices)
         {
-            var distinctBooks = books.Distinct().ToList();
-            return distinctBooks.Select(book => booksAndIndices.First(x => x.Item1 == book)).ToList();
+            var remainingBooks = booksAndIndices.Select(x => x.Item1);
+            var distinctBooks = remainingBooks.Distinct();
+            return distinctBooks.Select(book => booksAndIndices.First(x => x.Item1 == book));
         }
 
         public static double CalculatePriceFor(string books)
         {
-            return FindLowsetPriceUsingDlx(books.ToCharArray().ToList());
+            return FindLowsetPriceUsingDlx(books.ToCharArray());
         }
     }
 }
