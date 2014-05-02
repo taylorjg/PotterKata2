@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using DlxLib;
 
 namespace Code
@@ -28,11 +29,11 @@ namespace Code
             return subTotal;
         }
 
-        private static double FindLowsetPriceUsingDlx(IEnumerable<char> books)
+        private static double FindLowsetPriceUsingDlx2(IEnumerable<char> books, double basePrice)
         {
             var booksAndIndices = books.Select((book, index) => Tuple.Create(book, index)).ToList();
-            var dlxData = BuildDlxData(booksAndIndices);
-            var solutions = SolveDlx(dlxData);
+            var dlxData = BuildDlxData2(booksAndIndices);
+            var solutions = SolveDlx(dlxData, basePrice);
             return FindDlxSolutionWithLowestPrice(solutions, dlxData);
         }
 
@@ -46,10 +47,24 @@ namespace Code
             return solution.RowIndexes.Sum(rowIndex => dlxData[rowIndex].Item3);
         }
 
-        private static List<Solution> SolveDlx(IList<Tuple<int[], string, double>> dlxData)
+        private static List<Solution> SolveDlx(IList<Tuple<int[], string, double>> dlxData, double basePrice)
         {
             DumpDlxData(dlxData);
-            var dlx = new Dlx();
+
+            var cancellationTokenSource = new CancellationTokenSource();
+            var cancellationToken = cancellationTokenSource.Token;
+            var dlx = new Dlx(cancellationToken);
+
+            dlx.SolutionFound += (_, args) =>
+                {
+                    var solutionPrice = CalculatePriceOfSolution(args.Solution, dlxData);
+                    if (solutionPrice < basePrice)
+                    {
+                        System.Diagnostics.Debug.WriteLine("Found a solution with a lower price than base price (solution index: {0})", args.SolutionIndex);
+                        cancellationTokenSource.Cancel();
+                    }
+                };
+
             var solutions = dlx.Solve<
                 IList<Tuple<int[], string, double>>,
                 Tuple<int[], string, double>,
@@ -58,7 +73,8 @@ namespace Code
                     (d, f) => { foreach (var r in d) f(r); },
                     (r, f) => { foreach (var c in r.Item1) f(c); },
                     c => c != 0).ToList();
-            System.Diagnostics.Debug.WriteLine("Number of solutions: {0}", solutions.Count);
+
+            DumpDlxSolutions(dlxData, solutions);
             return solutions;
         }
 
@@ -73,7 +89,20 @@ namespace Code
             System.Diagnostics.Debug.WriteLine("Number of rows in dlxData: {0}", dlxData.Count);
         }
 
-        private static List<Tuple<int[], string, double>> BuildDlxData(IList<Tuple<char, int>> booksAndIndices)
+        private static void DumpDlxSolutions(IList<Tuple<int[], string, double>> dlxData, IList<Solution> solutions)
+        {
+            // ReSharper disable ReturnValueOfPureMethodIsNotUsed
+            solutions.Select((solution, index) =>
+                {
+                    var solutionString = string.Join("|", solution.RowIndexes.Select(rowIndex => dlxData[rowIndex].Item2));
+                    System.Diagnostics.Debug.WriteLine("solution[{0}]: {1}", index, solutionString);
+                    return 0;
+                });
+            // ReSharper restore ReturnValueOfPureMethodIsNotUsed
+            System.Diagnostics.Debug.WriteLine("Number of solutions: {0}", solutions.Count);
+        }
+
+        private static List<Tuple<int[], string, double>> BuildDlxData2(IList<Tuple<char, int>> booksAndIndices)
         {
             var numColumns = booksAndIndices.Count;
             var dlxData = new List<Tuple<int[], string, double>>();
@@ -145,9 +174,42 @@ namespace Code
             return Tuple.Create(columns, booksAsAString, subTotal);
         }
 
+        private static double FindLowsetPriceUsingDlx1(IEnumerable<char> books)
+        {
+            var booksAndIndices = books.Select((book, index) => Tuple.Create(book, index)).ToList();
+            var dlxData = BuildDlxData1(booksAndIndices);
+            var solutions = SolveDlx(dlxData, double.MaxValue);
+            return FindDlxSolutionWithLowestPrice(solutions, dlxData);
+        }
+
+        private static List<Tuple<int[], string, double>> BuildDlxData1(IList<Tuple<char, int>> booksAndIndices)
+        {
+            var numColumns = booksAndIndices.Count;
+            var dlxData = new List<Tuple<int[], string, double>>();
+
+            for (; ; )
+            {
+                var setOfBooks = FindBiggestDistinctSetOfBooks(booksAndIndices).ToList();
+                var numDistinctBooks = setOfBooks.Count();
+                if (numDistinctBooks == 0) break;
+                if (numDistinctBooks == 1) setOfBooks = booksAndIndices.Where(_ => true).ToList();
+                dlxData.Add(MakeDlxDataRow(numColumns, setOfBooks));
+                booksAndIndices.RemoveRange(setOfBooks);
+            }
+
+            return dlxData;
+        }
+        private static IEnumerable<Tuple<char, int>> FindBiggestDistinctSetOfBooks(IList<Tuple<char, int>> booksAndIndices)
+        {
+            var remainingBooks = booksAndIndices.Select(x => x.Item1);
+            var distinctBooks = remainingBooks.Distinct();
+            return distinctBooks.Select(book => booksAndIndices.First(x => x.Item1 == book));
+        }
+
         public static double CalculatePriceFor(string books)
         {
-            return FindLowsetPriceUsingDlx(books.ToCharArray());
+            var basePrice = FindLowsetPriceUsingDlx1(books.ToCharArray());
+            return FindLowsetPriceUsingDlx2(books.ToCharArray(), basePrice);
         }
     }
 }
