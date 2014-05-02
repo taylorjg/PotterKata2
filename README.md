@@ -30,9 +30,9 @@ together, do in fact describe the cheapest solution):
 01234567  subset of books   price
 ---------------------------------
 ... other rows ...
-10101010  "ABCD"  25.6
+10101010  "ABCD"            25.6
 ... other rows ...
-01010101  "ABCE"  25.6
+01010101  "ABCE"            25.6
 ... other rows ...
 ```
 
