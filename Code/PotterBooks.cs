@@ -174,29 +174,25 @@ namespace Code
             return Tuple.Create(columns, booksAsAString, subTotal);
         }
 
-        private static IEnumerable<char> FindBiggestDistinctSetOfBooks(IEnumerable<char> books)
+        private static double FindBasePriceIter(IList<char> remainingBooks, double totalSoFar)
         {
-            return books.Distinct();
+            var setOfBooks = remainingBooks.Distinct().ToList();
+            if (!setOfBooks.Any()) return totalSoFar;
+            var newTotalSoFar = totalSoFar + CalculateSubTotalForSetOfBooks(setOfBooks);
+            var newRemainingBooks = remainingBooks.CopyExcept(setOfBooks);
+            return FindBasePriceIter(newRemainingBooks, newTotalSoFar);
         }
 
-        private static double FindBasePrice(IEnumerable<char> books)
+        private static double FindBasePrice(IList<char> books)
         {
-            var total = 0d;
-            IList<char> remainingBooks = books.ToList();
-            for (;;)
-            {
-                if (!remainingBooks.Any()) break;
-                var setOfBooks = FindBiggestDistinctSetOfBooks(remainingBooks).ToList();
-                total += CalculateSubTotalForSetOfBooks(setOfBooks);
-                remainingBooks = remainingBooks.CopyExcept(setOfBooks);
-            }
-            return total;
+            return FindBasePriceIter(books, 0d);
         }
 
         public static double CalculatePriceFor(string books)
         {
-            var basePrice = FindBasePrice(books.ToCharArray());
-            return TryToBeatBasePriceUsingDlx(books.ToCharArray(), basePrice);
+            var booksAsArray = books.ToCharArray();
+            var basePrice = FindBasePrice(booksAsArray);
+            return TryToBeatBasePriceUsingDlx(booksAsArray, basePrice);
         }
     }
 }
