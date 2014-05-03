@@ -1,6 +1,6 @@
 ## Description
 
-This is an attempt at the Potter kata using the Donald E. Knuth's Dancing Links (DLX) algorithm.
+This is an attempt at the Potter kata using Donald E. Knuth's Dancing Links (DLX) algorithm.
 
 ## Exact Cover Problem
 
