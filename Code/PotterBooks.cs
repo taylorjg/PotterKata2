@@ -34,12 +34,13 @@ namespace Code
             var booksAndIndices = books.Select((book, index) => Tuple.Create(book, index)).ToList();
             var dlxData = BuildDlxData(booksAndIndices);
             var solutions = SolveDlx(dlxData, basePrice);
-            return FindDlxSolutionWithLowestPrice(solutions, dlxData);
+            var cheapestSolution = FindCheapestSolution(solutions, dlxData);
+            return (cheapestSolution != null) ? CalculatePriceOfSolution(cheapestSolution, dlxData) : 0;
         }
 
-        private static double FindDlxSolutionWithLowestPrice(IList<Solution> solutions, IList<Tuple<int[], string, double>> dlxData)
+        private static Solution FindCheapestSolution(IList<Solution> solutions, IList<Tuple<int[], string, double>> dlxData)
         {
-            return !solutions.Any() ? 0 : solutions.Min(solution => CalculatePriceOfSolution(solution, dlxData));
+            return solutions.Any() ? solutions.MinBy(solution => CalculatePriceOfSolution(solution, dlxData)) : null;
         }
 
         private static double CalculatePriceOfSolution(Solution solution, IList<Tuple<int[], string, double>> dlxData)
@@ -75,6 +76,7 @@ namespace Code
                     c => c != 0).ToList();
 
             DumpDlxSolutions(dlxData, solutions);
+
             return solutions;
         }
 
@@ -89,7 +91,7 @@ namespace Code
             System.Diagnostics.Debug.WriteLine("Number of rows in dlxData: {0}", dlxData.Count);
         }
 
-        private static void DumpDlxSolutions(IList<Tuple<int[], string, double>> dlxData, IList<Solution> solutions)
+        private static void DumpDlxSolutions(IList<Tuple<int[], string, double>> dlxData, ICollection<Solution> solutions)
         {
             // ReSharper disable ReturnValueOfPureMethodIsNotUsed
             solutions.Select((solution, index) =>
@@ -106,12 +108,14 @@ namespace Code
         {
             var numColumns = booksAndIndices.Count;
             var dlxData = new List<Tuple<int[], string, double>>();
-            Iter(numColumns, dlxData, booksAndIndices);
+            BuildDlxDataIter(numColumns, dlxData, booksAndIndices);
             return dlxData;
         }
 
-        private static void Iter(int numColumns, ICollection<Tuple<int[], string, double>> dlxData,
-                                 IList<Tuple<char, int>> booksAndIndices)
+        private static void BuildDlxDataIter(
+            int numColumns,
+            ICollection<Tuple<int[], string, double>> dlxData,
+            IList<Tuple<char, int>> booksAndIndices)
         {
             var combinations = GetNextSetOfBookCombinations(booksAndIndices).ToList();
 
@@ -128,7 +132,7 @@ namespace Code
                 {
                     AddDlxDataRow(dlxData, MakeDlxDataRow(numColumns, combination));
                     var remainingBooksAndIndices = booksAndIndices.CopyExcept(combination);
-                    Iter(numColumns, dlxData, remainingBooksAndIndices);
+                    BuildDlxDataIter(numColumns, dlxData, remainingBooksAndIndices);
                 }
             }
             else
@@ -174,6 +178,11 @@ namespace Code
             return Tuple.Create(columns, booksAsAString, subTotal);
         }
 
+        private static double FindBasePrice(IList<char> books)
+        {
+            return FindBasePriceIter(books, 0d);
+        }
+
         private static double FindBasePriceIter(IList<char> remainingBooks, double totalSoFar)
         {
             var setOfBooks = remainingBooks.Distinct().ToList();
@@ -181,11 +190,6 @@ namespace Code
             var newTotalSoFar = totalSoFar + CalculateSubTotalForSetOfBooks(setOfBooks);
             var newRemainingBooks = remainingBooks.CopyExcept(setOfBooks);
             return FindBasePriceIter(newRemainingBooks, newTotalSoFar);
-        }
-
-        private static double FindBasePrice(IList<char> books)
-        {
-            return FindBasePriceIter(books, 0d);
         }
 
         public static double CalculatePriceFor(string books)
