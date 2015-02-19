@@ -4,7 +4,7 @@ using NUnit.Framework;
 namespace Tests
 {
     [TestFixture]
-    internal class PotterTests
+    public class PotterTests
     {
         [Test]
         public void NoBooksCostZero()

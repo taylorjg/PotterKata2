@@ -43,13 +43,7 @@ namespace Code
         {
             DumpDlxData(dlxData);
 
-            var solutions = new Dlx().Solve<IList<DlxDataRow>, DlxDataRow, int>(
-                dlxData,
-                (d, f) => { foreach (var r in d) f(r); },
-                (r, f) => { foreach (var c in r.Item1) f(c); },
-                c => c != 0);
-
-            return solutions
+            return new Dlx().Solve(dlxData, d => d, r => r.Item1)
                 .Select(solution => Tuple.Create(solution, CalculatePriceOfSolution(solution, dlxData)))
                 .FirstOrDefault(x => x.Item2 < basePrice);
         }
